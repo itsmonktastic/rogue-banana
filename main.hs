@@ -65,12 +65,10 @@ main = do
     C.echo False
     C.cursSet C.CursorInvisible
 
-    (startAddHandler, startCallback) <- newAddHandler
     (getChAddHandler, getChCallback) <- newAddHandler
 
     let networkDescription :: forall t. Frameworks t => Moment t ()
         networkDescription = do
-            eStart <- fromAddHandler startAddHandler
             eKey   <- fromAddHandler getChAddHandler
 
             let eMove  = (preventMoveIntoWall . keyToMove) <$> eKey
@@ -81,6 +79,5 @@ main = do
 
     network <- compile networkDescription
     actuate network
-    startCallback ()
     forever $ C.getCh >>= getChCallback
 
