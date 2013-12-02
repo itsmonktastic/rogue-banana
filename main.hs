@@ -10,6 +10,11 @@ castEnum = toEnum . fromEnum
 posMove (dx, dy) =
     \(x, y) -> (x + dx, y + dy)
 
+preventMoveIntoWall mf currentPos = if inWall then currentPos else newPos
+  where
+    newPos@(newX, newY) = mf currentPos
+    inWall = exampleWorld !! newX !! newY == Wall
+
 charToMove c = case c of
     'h' -> (-1, 0)
     'j' -> (0, 1)
@@ -40,14 +45,19 @@ drawWorld w = drawWorldRow 0 w
         C.mvAddCh ri ci (castEnum $ tileToChar c)
         drawWorldCol ri (ci + 1) cs rs
 
-data Tile = Floor | Wall
+data Tile = Floor | Wall deriving (Eq)
 type World = [[Tile]]
 
 tileToChar t = case t of
     Wall  -> '#'
     Floor -> '.'
 
-exampleWorld = [[Floor, Floor]]
+exampleWorld = [
+    [Wall, Wall, Wall, Wall, Wall],
+    [Wall, Floor, Floor, Floor, Wall],
+    [Wall, Floor, Floor, Floor, Wall],
+    [Wall, Floor, Floor, Floor, Wall],
+    [Wall, Wall, Wall, Wall, Wall]]
 
 main :: IO ()
 main = do
@@ -63,8 +73,8 @@ main = do
             eStart <- fromAddHandler startAddHandler
             eKey   <- fromAddHandler getChAddHandler
 
-            let eMove  = keyToMove <$> eKey
-                bPos   = accumB (0, 0) eMove
+            let eMove  = (preventMoveIntoWall . keyToMove) <$> eKey
+                bPos   = accumB (2, 2) eMove
 
             ePos <- changes bPos
             reactimate (drawScreen exampleWorld <$> ePos)
