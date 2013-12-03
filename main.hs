@@ -59,6 +59,21 @@ exampleWorld = [
     [Wall, Floor, Floor, Floor, Wall],
     [Wall, Wall, Wall, Wall, Wall]]
 
+newtype TopGUI = MkTopGUI GUI
+data GUI = TextWindow String | StackLayout [GUI] | Positioned (Int, Int) GUI
+
+drawPicture (MkTopGUI p) = do
+    C.erase
+    drawPicture' (0, 0) p
+    C.refresh
+  where
+    drawPicture' (x, y) p = case p of
+        (StackLayout ws)     -> forM_ ws $ drawPicture' (x, y)
+        (TextWindow s)       -> drawText (x, y) s
+        (Positioned pos pic) -> drawPicture' pos pic
+    drawText (x, y) s = forM_ (zip [0..] $ lines s) $ \(i, l) ->
+        C.mvWAddStr C.stdScr (y+i) x l
+
 main :: IO ()
 main = do
     C.initCurses
@@ -69,10 +84,28 @@ main = do
 
     let networkDescription :: forall t. Frameworks t => Moment t ()
         networkDescription = do
+            eKey <- fromAddHandler getChAddHandler
+            let ePicture = const (MkTopGUI $ StackLayout [Positioned (3, 4) $ TextWindow "hello, world!\nhello world again!\n hello world the third!", Positioned (5, 1) $ TextWindow "goodbye, world!"]) <$> eKey
+            reactimate (drawPicture <$> ePicture)
+
+    network <- compile networkDescription
+    actuate network
+    forever $ C.getCh >>= getChCallback
+
+main2 :: IO ()
+main2 = do
+    C.initCurses
+    C.echo False
+    C.cursSet C.CursorInvisible
+
+    (getChAddHandler, getChCallback) <- newAddHandler
+
+    let networkDescription :: forall t. Frameworks t => Moment t ()
+        networkDescription = do
             eKey   <- fromAddHandler getChAddHandler
 
-            let eMove  = (preventMoveIntoWall . keyToMove) <$> eKey
-                bPos   = accumB (2, 2) eMove
+            let eMove    = (preventMoveIntoWall . keyToMove) <$> eKey
+                bPos     = accumB (2, 2) eMove
 
             ePos <- changes bPos
             reactimate (drawScreen exampleWorld <$> ePos)
