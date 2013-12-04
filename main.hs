@@ -4,13 +4,16 @@ import Reactive.Banana.Frameworks
 import qualified UI.HSCurses.Curses as C
 import Control.Monad (forever, forM_)
 import Control.Applicative
+import Data.List (intersperse)
 
-castEnum = toEnum . fromEnum
+castEnum =
+    toEnum . fromEnum
 
 posMove (dx, dy) =
     \(x, y) -> (x + dx, y + dy)
 
-preventMoveIntoWall mf currentPos = if inWall then currentPos else newPos
+preventMoveIntoWall mf currentPos =
+    if inWall then currentPos else newPos
   where
     newPos@(newX, newY) = mf currentPos
     inWall = exampleWorld !! newX !! newY == Wall
@@ -26,26 +29,9 @@ keyToMove k = posMove $ case k of
     (C.KeyChar c) -> charToMove c
     _           -> (0, 0)
 
-drawScreen w p = do
-    C.erase
-    drawWorld w
-    drawPlayer p
-    C.refresh
+data Tile = Floor
+          | Wall deriving (Eq)
 
-drawPlayer (x, y) =
-    C.mvAddCh y x (castEnum '@')
-
-drawWorld w = drawWorldRow 0 w
-  where
-    drawWorldRow ri []     = return ()
-    drawWorldRow ri (r:rs) = drawWorldCol ri 0 r rs
-
-    drawWorldCol ri ci [] rs     = drawWorldRow (ri + 1) rs
-    drawWorldCol ri ci (c:cs) rs = do
-        C.mvAddCh ri ci (castEnum $ tileToChar c)
-        drawWorldCol ri (ci + 1) cs rs
-
-data Tile = Floor | Wall deriving (Eq)
 type World = [[Tile]]
 
 tileToChar t = case t of
@@ -60,7 +46,10 @@ exampleWorld = [
     [Wall, Wall, Wall, Wall, Wall]]
 
 newtype TopGUI = MkTopGUI GUI
-data GUI = TextWindow String | StackLayout [GUI] | Positioned (Int, Int) GUI
+
+data GUI = TextWindow String
+         | StackLayout [GUI]
+         | Positioned (Int, Int) GUI
 
 drawPicture (MkTopGUI p) = do
     C.erase
@@ -74,6 +63,18 @@ drawPicture (MkTopGUI p) = do
     drawText (x, y) s = forM_ (zip [0..] $ lines s) $ \(i, l) ->
         C.mvWAddStr C.stdScr (y+i) x l
 
+renderMap pos =
+    take index rendered ++ "@" ++ drop (index + 1) rendered
+  where
+    (px, py) = pos
+    index    = py * 6 + px
+    rendered = concat $ intersperse "\n" $ map (map tileToChar) exampleWorld
+
+makePicture pos = MkTopGUI $
+    StackLayout [
+        TextWindow $ "Position " ++ show pos,
+        Positioned (0, 1) $ TextWindow $ renderMap pos]
+
 main :: IO ()
 main = do
     C.initCurses
@@ -85,30 +86,12 @@ main = do
     let networkDescription :: forall t. Frameworks t => Moment t ()
         networkDescription = do
             eKey <- fromAddHandler getChAddHandler
-            let ePicture = const (MkTopGUI $ StackLayout [Positioned (3, 4) $ TextWindow "hello, world!\nhello world again!\n hello world the third!", Positioned (5, 1) $ TextWindow "goodbye, world!"]) <$> eKey
-            reactimate (drawPicture <$> ePicture)
-
-    network <- compile networkDescription
-    actuate network
-    forever $ C.getCh >>= getChCallback
-
-main2 :: IO ()
-main2 = do
-    C.initCurses
-    C.echo False
-    C.cursSet C.CursorInvisible
-
-    (getChAddHandler, getChCallback) <- newAddHandler
-
-    let networkDescription :: forall t. Frameworks t => Moment t ()
-        networkDescription = do
-            eKey   <- fromAddHandler getChAddHandler
 
             let eMove    = (preventMoveIntoWall . keyToMove) <$> eKey
-                bPos     = accumB (2, 2) eMove
+                ePos     = accumE (2, 2) eMove
+                ePicture = makePicture <$> ePos
 
-            ePos <- changes bPos
-            reactimate (drawScreen exampleWorld <$> ePos)
+            reactimate (drawPicture <$> ePicture)
 
     network <- compile networkDescription
     actuate network
