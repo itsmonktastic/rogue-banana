@@ -66,20 +66,43 @@ drawPicture (MkTopGUI p) = do
     drawText (x, y) s = forM_ (zip [0..] $ lines s) $ \(i, l) ->
         C.mvWAddStr C.stdScr (y+i) x l
 
+calcIndex window pos = index
+  where
+    (wx, wy, ww, wh) = window
+    (px, py)     = pos
+    index        = (py-wy) * (ww+1) + (px-wx)
+
 renderMap window pos =
     take index rendered ++ "@" ++ drop (index + 1) rendered
   where
     (wx, wy, ww, wh) = window
     (px, py)     = pos
-    index        = py * (ww+1) + px
+    index        = (py-wy) * ((min ww $ width - wx) + 1) + (px-wx)
     windowRows   = take wh $ drop wy $ exampleWorld
     renderedRows = map (map tileToChar . take ww . drop wx) windowRows
     rendered     = concat $ intersperse "\n" $ renderedRows
 
 makePicture window pos = MkTopGUI $
     StackLayout [
-        TextWindow $ "Position " ++ show pos,
+        TextWindow $ "Position " ++ show pos ++ ", Window " ++ show window,
         Positioned (0, 1) $ TextWindow $ renderMap window pos]
+
+posNeedsNewWindow (wx, wy, ww, wh) (px, py) =
+    px <= wx ||
+    px >= wx + ww ||
+    py <= wy ||
+    py >= wy + wh
+
+mkWindow (wx, wy, ww, wh) (px, py) =
+    -- TODO: what does this do for odd ww/wh
+    (max 0 $ px - ww `div` 2, max 0 $ py - ww `div` 2, ww, wh)
+
+type Window = (Int, Int, Int, Int)
+type Position = (Int, Int)
+
+posToWindow :: Position -> Window -> Window
+posToWindow pos =
+    \w -> if posNeedsNewWindow w pos then mkWindow w pos else w
 
 main :: IO ()
 main = do
@@ -94,10 +117,14 @@ main = do
             eKey <- fromAddHandler getChAddHandler
 
             let eMove    = (preventMoveIntoWall . keyToMove) <$> eKey
-                ePos     = accumE (1, 1) eMove
-                --eWindow  = accumE (0, 0, 10, 10) (pure $ \x y ->
-                ePicture = makePicture (0, 0, 3, 3) <$> ePos
+                bPos     = accumB (1, 1) eMove
+                bMkWindow = posToWindow <$> bPos
 
+            eMkWindow <- changes bMkWindow
+            let bWindow  = accumB (0, 0, 10, 10) eMkWindow
+                bPicture = makePicture <$> bWindow <*> bPos
+
+            ePicture <- changes bPicture
             reactimate (drawPicture <$> ePicture)
 
     network <- compile networkDescription
