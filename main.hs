@@ -13,7 +13,7 @@ preventMoveIntoWall mf currentPos =
     if inWall then currentPos else newPos
   where
     newPos@(newX, newY) = mf currentPos
-    inWall = exampleWorld !! newX !! newY /= Floor
+    inWall = exampleWorld !! newY !! newX /= Floor
 
 charToMove c = case c of
     'h' -> (-1, 0)
