@@ -6,9 +6,6 @@ import Control.Monad (forever, forM_)
 import Control.Applicative
 import Data.List (intersperse)
 
-castEnum =
-    toEnum . fromEnum
-
 posMove (dx, dy) =
     \(x, y) -> (x + dx, y + dy)
 
@@ -16,7 +13,7 @@ preventMoveIntoWall mf currentPos =
     if inWall then currentPos else newPos
   where
     newPos@(newX, newY) = mf currentPos
-    inWall = exampleWorld !! newX !! newY == Wall
+    inWall = exampleWorld !! newX !! newY /= Floor
 
 charToMove c = case c of
     'h' -> (-1, 0)
@@ -30,20 +27,22 @@ keyToMove k = posMove $ case k of
     _           -> (0, 0)
 
 data Tile = Floor
-          | Wall deriving (Eq)
+          | WallV
+          | WallH deriving (Eq)
 
 type World = [[Tile]]
 
 tileToChar t = case t of
-    Wall  -> '#'
+    WallH -> '-'
+    WallV -> '|'
     Floor -> '.'
 
 exampleWorld = [
-    [Wall, Wall, Wall, Wall, Wall],
-    [Wall, Floor, Floor, Floor, Wall],
-    [Wall, Floor, Floor, Floor, Wall],
-    [Wall, Floor, Floor, Floor, Wall],
-    [Wall, Wall, Wall, Wall, Wall]]
+    [WallH, WallH, WallH, WallH, WallH],
+    [WallV, Floor, Floor, Floor, WallV],
+    [WallV, Floor, Floor, Floor, WallV],
+    [WallV, Floor, Floor, Floor, WallV],
+    [WallH, WallH, WallH, WallH, WallH]]
 
 newtype TopGUI = MkTopGUI GUI
 
