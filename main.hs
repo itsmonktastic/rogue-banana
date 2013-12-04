@@ -37,12 +37,16 @@ tileToChar t = case t of
     WallV -> '|'
     Floor -> '.'
 
-exampleWorld = [
-    [WallH, WallH, WallH, WallH, WallH],
-    [WallV, Floor, Floor, Floor, WallV],
-    [WallV, Floor, Floor, Floor, WallV],
-    [WallV, Floor, Floor, Floor, WallV],
-    [WallH, WallH, WallH, WallH, WallH]]
+width = 20
+height = 3
+
+exampleWorld =
+    top ++ middle ++ bottom
+  where
+    top = [(replicate width WallH)]
+    row = [WallV] ++ replicate (width-2) Floor ++ [WallV]
+    middle = replicate height row
+    bottom = top
 
 newtype TopGUI = MkTopGUI GUI
 
@@ -66,7 +70,7 @@ renderMap pos =
     take index rendered ++ "@" ++ drop (index + 1) rendered
   where
     (px, py) = pos
-    index    = py * 6 + px
+    index    = py * (width+1) + px
     rendered = concat $ intersperse "\n" $ map (map tileToChar) exampleWorld
 
 makePicture pos = MkTopGUI $
@@ -87,7 +91,7 @@ main = do
             eKey <- fromAddHandler getChAddHandler
 
             let eMove    = (preventMoveIntoWall . keyToMove) <$> eKey
-                ePos     = accumE (2, 2) eMove
+                ePos     = accumE (1, 1) eMove
                 ePicture = makePicture <$> ePos
 
             reactimate (drawPicture <$> ePicture)
