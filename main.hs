@@ -69,9 +69,10 @@ drawPicture (MkTopGUI p) = do
 renderMap pos =
     take index rendered ++ "@" ++ drop (index + 1) rendered
   where
-    (px, py) = pos
-    index    = py * (width+1) + px
-    rendered = concat $ intersperse "\n" $ map (map tileToChar) exampleWorld
+    (px, py)     = pos
+    index        = py * (width+1) + px
+    renderedRows = map (map tileToChar) exampleWorld
+    rendered     = concat $ intersperse "\n" $ renderedRows
 
 makePicture pos = MkTopGUI $
     StackLayout [
