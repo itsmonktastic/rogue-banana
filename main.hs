@@ -38,7 +38,7 @@ tileToChar t = case t of
     Floor -> '.'
 
 width = 20
-height = 3
+height = 20
 
 exampleWorld =
     top ++ middle ++ bottom
@@ -66,18 +66,20 @@ drawPicture (MkTopGUI p) = do
     drawText (x, y) s = forM_ (zip [0..] $ lines s) $ \(i, l) ->
         C.mvWAddStr C.stdScr (y+i) x l
 
-renderMap pos =
+renderMap window pos =
     take index rendered ++ "@" ++ drop (index + 1) rendered
   where
+    (wx, wy, ww, wh) = window
     (px, py)     = pos
-    index        = py * (width+1) + px
-    renderedRows = map (map tileToChar) exampleWorld
+    index        = py * (ww+1) + px
+    windowRows   = take wh $ drop wy $ exampleWorld
+    renderedRows = map (map tileToChar . take ww . drop wx) windowRows
     rendered     = concat $ intersperse "\n" $ renderedRows
 
-makePicture pos = MkTopGUI $
+makePicture window pos = MkTopGUI $
     StackLayout [
         TextWindow $ "Position " ++ show pos,
-        Positioned (0, 1) $ TextWindow $ renderMap pos]
+        Positioned (0, 1) $ TextWindow $ renderMap window pos]
 
 main :: IO ()
 main = do
@@ -93,7 +95,8 @@ main = do
 
             let eMove    = (preventMoveIntoWall . keyToMove) <$> eKey
                 ePos     = accumE (1, 1) eMove
-                ePicture = makePicture <$> ePos
+                --eWindow  = accumE (0, 0, 10, 10) (pure $ \x y ->
+                ePicture = makePicture (0, 0, 3, 3) <$> ePos
 
             reactimate (drawPicture <$> ePicture)
 
