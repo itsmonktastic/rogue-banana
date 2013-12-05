@@ -113,6 +113,17 @@ posToWindow :: Position -> Window -> Window
 posToWindow pos =
     \w -> if posNeedsNewWindow w pos then mkWindow w pos else w
 
+pickup gmap (px, py) = mapping
+  where
+    tile = gmap !! py !! px
+    mapping = case tile of
+        (Floor (i:is)) -> \gmap' ->
+            let row = gmap' !! py in
+            take py gmap' ++
+            [take px row ++ [Floor is] ++ drop (px+1) row] ++
+            drop py gmap'
+        _              -> id
+
 main :: IO ()
 main = do
     C.initCurses
@@ -125,11 +136,12 @@ main = do
         networkDescription = do
             eKey <- fromAddHandler getChAddHandler
 
-            let bMap      = pure exampleMap
+            let bMap      = accumB exampleMap ePickup
                 bResolve  = preventMoveIntoWall <$> bMap
                 eMove     = keyToMove <$> eKey
                 eRMove    = bResolve <@> eMove
                 ePos      = accumE (1, 1) eRMove
+                ePickup   = pickup <$> bMap <@> ePos
                 eMkWindow = posToWindow <$> ePos
                 bWindow   = accumB (0, 0, 10, 10) eMkWindow
                 bPos      = stepper (1, 1) ePos
