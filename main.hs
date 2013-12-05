@@ -9,11 +9,12 @@ import Data.List (intersperse)
 posMove (dx, dy) =
     \(x, y) -> (x + dx, y + dy)
 
-preventMoveIntoWall mf currentPos =
+-- pre: current pos added to move is in bounds of gmap
+preventMoveIntoWall gmap mf currentPos =
     if inWall then currentPos else newPos
   where
     newPos@(newX, newY) = mf currentPos
-    inWall = case exampleWorld !! newY !! newX of
+    inWall = case gmap !! newY !! newX of
         (Floor _) -> False
         _         -> True
 
@@ -48,7 +49,7 @@ itemToChar i = case i of
 width = 20
 height = 20
 
-exampleWorld =
+exampleMap =
     top ++ middle ++ bottom
   where
     top = [(replicate width WallH)]
@@ -80,20 +81,20 @@ calcIndex window pos = index
     (px, py)     = pos
     index        = (py-wy) * (ww+1) + (px-wx)
 
-renderMap window pos =
+renderMap window pos gmap =
     take index rendered ++ "@" ++ drop (index + 1) rendered
   where
     (wx, wy, ww, wh) = window
     (px, py)     = pos
     index        = (py-wy) * ((min ww $ width - wx) + 1) + (px-wx)
-    windowRows   = take wh $ drop wy $ exampleWorld
+    windowRows   = take wh $ drop wy $ gmap
     renderedRows = map (map tileToChar . take ww . drop wx) windowRows
     rendered     = concat $ intersperse "\n" $ renderedRows
 
-makePicture window pos = MkTopGUI $
+makePicture window pos gmap = MkTopGUI $
     StackLayout [
         TextWindow $ "Position " ++ show pos ++ ", Window " ++ show window,
-        Positioned (0, 1) $ TextWindow $ renderMap window pos]
+        Positioned (0, 1) $ TextWindow $ renderMap window pos gmap]
 
 posNeedsNewWindow (wx, wy, ww, wh) (px, py) =
     px <= wx ||
@@ -101,8 +102,8 @@ posNeedsNewWindow (wx, wy, ww, wh) (px, py) =
     py <= wy ||
     py >= wy + wh
 
+-- TODO: what does this do for odd ww/wh
 mkWindow (wx, wy, ww, wh) (px, py) =
-    -- TODO: what does this do for odd ww/wh
     (max 0 $ px - ww `div` 2, max 0 $ py - ww `div` 2, ww, wh)
 
 type Window = (Int, Int, Int, Int)
@@ -124,12 +125,15 @@ main = do
         networkDescription = do
             eKey <- fromAddHandler getChAddHandler
 
-            let eMove     = (preventMoveIntoWall . keyToMove) <$> eKey
-                ePos      = accumE (1, 1) eMove
+            let bMap      = pure exampleMap
+                bResolve  = preventMoveIntoWall <$> bMap
+                eMove     = keyToMove <$> eKey
+                eRMove    = bResolve <@> eMove
+                ePos      = accumE (1, 1) eRMove
                 eMkWindow = posToWindow <$> ePos
                 bWindow   = accumB (0, 0, 10, 10) eMkWindow
                 bPos      = stepper (1, 1) ePos
-                bPicture  = makePicture <$> bWindow <*> bPos
+                bPicture  = makePicture <$> bWindow <*> bPos <*> bMap
 
             ePicture <- changes bPicture
             reactimate (drawPicture <$> ePicture)
