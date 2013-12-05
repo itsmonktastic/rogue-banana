@@ -116,13 +116,12 @@ main = do
         networkDescription = do
             eKey <- fromAddHandler getChAddHandler
 
-            let eMove    = (preventMoveIntoWall . keyToMove) <$> eKey
-                bPos     = accumB (1, 1) eMove
-                bMkWindow = posToWindow <$> bPos
-
-            eMkWindow <- changes bMkWindow
-            let bWindow  = accumB (0, 0, 10, 10) eMkWindow
-                bPicture = makePicture <$> bWindow <*> bPos
+            let eMove     = (preventMoveIntoWall . keyToMove) <$> eKey
+                ePos      = accumE (1, 1) eMove
+                eMkWindow = posToWindow <$> ePos
+                bWindow   = accumB (0, 0, 10, 10) eMkWindow
+                bPos      = stepper (1, 1) ePos
+                bPicture  = makePicture <$> bWindow <*> bPos
 
             ePicture <- changes bPicture
             reactimate (drawPicture <$> ePicture)
