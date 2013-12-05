@@ -121,7 +121,7 @@ pickup gmap (px, py) = mapping
             let row = gmap' !! py in
             take py gmap' ++
             [take px row ++ [Floor is] ++ drop (px+1) row] ++
-            drop py gmap'
+            drop (py+1) gmap'
         _              -> id
 
 main :: IO ()
