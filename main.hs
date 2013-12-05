@@ -13,7 +13,9 @@ preventMoveIntoWall mf currentPos =
     if inWall then currentPos else newPos
   where
     newPos@(newX, newY) = mf currentPos
-    inWall = exampleWorld !! newY !! newX /= Floor
+    inWall = case exampleWorld !! newY !! newX of
+        (Floor _) -> False
+        _         -> True
 
 charToMove c = case c of
     'h' -> (-1, 0)
@@ -24,18 +26,24 @@ charToMove c = case c of
 
 keyToMove k = posMove $ case k of
     (C.KeyChar c) -> charToMove c
-    _           -> (0, 0)
+    _             -> (0, 0)
 
-data Tile = Floor
+data Item = Gold Integer deriving (Eq)
+
+data Tile = Floor [Item]
           | WallV
           | WallH deriving (Eq)
 
 type World = [[Tile]]
 
 tileToChar t = case t of
-    WallH -> '-'
-    WallV -> '|'
-    Floor -> '.'
+    WallH        -> '-'
+    WallV        -> '|'
+    Floor []     -> '.'
+    Floor (i:is) -> itemToChar i
+
+itemToChar i = case i of
+    (Gold _) -> '$'
 
 width = 20
 height = 20
@@ -44,7 +52,7 @@ exampleWorld =
     top ++ middle ++ bottom
   where
     top = [(replicate width WallH)]
-    row = [WallV] ++ replicate (width-2) Floor ++ [WallV]
+    row = [WallV] ++ replicate (width-3) (Floor []) ++ [Floor [Gold 1], WallV]
     middle = replicate height row
     bottom = top
 
