@@ -48,6 +48,9 @@ itemToChar i = case i of
 
 width = 20
 height = 20
+wWidth = 20
+wHeight = 20
+
 
 exampleMap =
     top ++ middle ++ bottom
@@ -95,7 +98,7 @@ makePicture window pos gmap inv = MkTopGUI $
     StackLayout [
         TextWindow $ "Position " ++ show pos ++ ", Window " ++ show window,
         Positioned (0, 1) $ TextWindow $ renderMap window pos gmap,
-        Positioned (0, 11) $ TextWindow $ "Gold " ++ show inv]
+        Positioned (0, wHeight + 1) $ TextWindow $ "Gold " ++ show inv]
 
 posNeedsNewWindow (wx, wy, ww, wh) (px, py) =
     px <= wx ||
@@ -153,7 +156,7 @@ main = do
                 eGold     = filterJust $ gold <$> bMap <@> ePos
                 bGold     = accumB 0 $ (+) <$> eGold
                 eMkWindow = posToWindow <$> ePos
-                bWindow   = accumB (0, 0, 10, 10) eMkWindow
+                bWindow   = accumB (0, 0, wWidth, wHeight) eMkWindow
                 bPos      = stepper (1, 1) ePos
                 bPicture  = makePicture <$>
                     bWindow <*>
