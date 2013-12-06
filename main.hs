@@ -48,8 +48,8 @@ itemToChar i = case i of
 
 width = 20
 height = 20
-wWidth = 20
-wHeight = 20
+wWidth = 15
+wHeight = 15
 
 
 exampleMap =
@@ -100,22 +100,23 @@ makePicture window pos gmap inv = MkTopGUI $
         Positioned (0, 1) $ TextWindow $ renderMap window pos gmap,
         Positioned (0, wHeight + 1) $ TextWindow $ "Gold " ++ show inv]
 
-posNeedsNewWindow (wx, wy, ww, wh) (px, py) =
-    px <= wx ||
-    px >= wx + ww ||
-    py <= wy ||
-    py >= wy + wh
-
--- TODO: what does this do for odd ww/wh
-mkWindow (wx, wy, ww, wh) (px, py) =
-    (max 0 $ px - ww `div` 2, max 0 $ py - ww `div` 2, ww, wh)
-
 type Window = (Int, Int, Int, Int)
 type Position = (Int, Int)
 
 posToWindow :: Position -> Window -> Window
-posToWindow pos =
-    \w -> if posNeedsNewWindow w pos then mkWindow w pos else w
+posToWindow pos w
+  | scrollBoth  = (wx', wy', ww, wh)
+  | scrollHoriz = (wx', wy, ww, wh)
+  | scrollVert  = (wx, wy', ww, wh)
+  | otherwise   = w
+  where
+    wx' = max 0 $ px - ww `div` 2
+    wy' = max 0 $ py - wh `div` 2
+    (px, py)         = pos
+    (wx, wy, ww, wh) = w
+    scrollHoriz      = px <= wx || px >= wx + ww
+    scrollVert       = py <= wy || py >= wy + wh
+    scrollBoth       = scrollHoriz && scrollVert
 
 pickup gmap (px, py) = mapping
   where
