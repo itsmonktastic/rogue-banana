@@ -91,10 +91,11 @@ renderMap window pos gmap =
     renderedRows = map (map tileToChar . take ww . drop wx) windowRows
     rendered     = concat $ intersperse "\n" $ renderedRows
 
-makePicture window pos gmap = MkTopGUI $
+makePicture window pos gmap inv = MkTopGUI $
     StackLayout [
         TextWindow $ "Position " ++ show pos ++ ", Window " ++ show window,
-        Positioned (0, 1) $ TextWindow $ renderMap window pos gmap]
+        Positioned (0, 1) $ TextWindow $ renderMap window pos gmap,
+        Positioned (0, 11) $ TextWindow $ "Gold " ++ show inv]
 
 posNeedsNewWindow (wx, wy, ww, wh) (px, py) =
     px <= wx ||
@@ -124,6 +125,13 @@ pickup gmap (px, py) = mapping
             drop (py+1) gmap'
         _              -> id
 
+gold gmap (px, py) = mg
+  where
+    tile = gmap !! py !! px
+    mg = case tile of
+        (Floor ((Gold g):is)) -> Just g
+        _                     -> Nothing
+
 main :: IO ()
 main = do
     C.initCurses
@@ -142,10 +150,16 @@ main = do
                 eRMove    = bResolve <@> eMove
                 ePos      = accumE (1, 1) eRMove
                 ePickup   = pickup <$> bMap <@> ePos
+                eGold     = filterJust $ gold <$> bMap <@> ePos
+                bGold     = accumB 0 $ (+) <$> eGold
                 eMkWindow = posToWindow <$> ePos
                 bWindow   = accumB (0, 0, 10, 10) eMkWindow
                 bPos      = stepper (1, 1) ePos
-                bPicture  = makePicture <$> bWindow <*> bPos <*> bMap
+                bPicture  = makePicture <$>
+                    bWindow <*>
+                    bPos <*>
+                    bMap <*>
+                    bGold
 
             ePicture <- changes bPicture
             reactimate (drawPicture <$> ePicture)
